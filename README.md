@@ -71,7 +71,7 @@ if len(notSolvedPaths) > 0 {
 
 ### Examples
 
-Take a lock at goastap_test.go for an example of how to use the package. 
+Take a look at goastap_test.go for an example of how to use the package. 
 
 
 ## Backup and Restore Behavior
