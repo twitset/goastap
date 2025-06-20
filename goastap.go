@@ -1,6 +1,7 @@
 package goastap
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,17 +13,22 @@ type Solver struct {
 	astapBinaryPath string
 }
 
-func NewSolver(astapBinaryPath string) *Solver {
-	if astapBinaryPath == "" {
-		panic("astap binary path cannot be found")
+func NewSolver(astapBinaryPath string) (solver *Solver, err error) {
+	solver = &Solver{astapBinaryPath: astapBinaryPath}
+	err = solver.verifyBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify ASTAP binary: %w", err)
 	}
-	return &Solver{astapBinaryPath: astapBinaryPath}
+	return
 }
 
-func (s *Solver) Solve(imagePath string, disableBackups bool) {
+func (s *Solver) Solve(imagePath string, disableBackups bool) (err error) {
 
 	if !disableBackups {
-		createBackupFile(imagePath)
+		err = createBackupFile(imagePath)
+		if err != nil {
+			return
+		}
 	}
 
 	args := []string{
@@ -34,20 +40,20 @@ func (s *Solver) Solve(imagePath string, disableBackups bool) {
 	// directly invoke the ASTAP binary
 	cmd := exec.Command(s.astapBinaryPath, args...)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		fmt.Printf("ASTAP failed: %v\nOutput: %s\n", err, output)
 
-		// if we fail, we restore the backup file if it was created
 		if !disableBackups {
 			restoreBackupFile(imagePath)
 		}
-		return
+		return errors.New(string(output))
 	}
+	return
 }
 
-func (s *Solver) SolveDirectory(directoryPath string, disableBackups bool) error {
+func (s *Solver) SolveDirectory(directoryPath string, disableBackups bool) (notSolvedFilePaths map[string]string, err error) {
+	notSolvedFilePaths = make(map[string]string)
 	files, err := os.ReadDir(directoryPath)
 	if err != nil {
-		return fmt.Errorf("failed to read directory %s: %w", directoryPath, err)
+		return notSolvedFilePaths, fmt.Errorf("failed to read directory %s: %w", directoryPath, err)
 	}
 
 	for _, file := range files {
@@ -60,14 +66,18 @@ func (s *Solver) SolveDirectory(directoryPath string, disableBackups bool) error
 		}
 
 		imagePath := directoryPath + "/" + file.Name()
-		s.Solve(imagePath, disableBackups)
+		err = s.Solve(imagePath, disableBackups)
+		if err != nil {
+			notSolvedFilePaths[imagePath] = err.Error()
+			continue
+		}
 	}
 
-	return nil
+	return
 }
 
-// VerifyAstapBinary checks if the ASTAP binary exists at the specified path.
-func (s *Solver) VerifyAstapBinary() error {
+// verifyBinary checks if the ASTAP binary exists at the specified path.
+func (s *Solver) verifyBinary() error {
 	if s.astapBinaryPath == "" {
 		return fmt.Errorf("astap binary path is not set")
 	}
@@ -78,14 +88,13 @@ func (s *Solver) VerifyAstapBinary() error {
 	return nil
 }
 
-func createBackupFile(filePath string) {
+func createBackupFile(filePath string) (err error) {
 
 	backupPath := filePath + ".bak"
 
 	// Open original for reading
 	src, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("Error opening original file: %v\n", err)
 		return
 	}
 	defer src.Close()
@@ -93,18 +102,15 @@ func createBackupFile(filePath string) {
 	// Create backup file
 	dst, err := os.Create(backupPath)
 	if err != nil {
-		fmt.Printf("Error creating backup file: %v\n", err)
 		return
 	}
 	defer dst.Close()
 
 	// Copy contents
-	if _, err := io.Copy(dst, src); err != nil {
-		fmt.Printf("Error copying to backup: %v\n", err)
-		return
+	if _, errCopy := io.Copy(dst, src); err != nil {
+		return errCopy
 	}
-
-	fmt.Printf("Backup created at: %s\n", backupPath)
+	return
 }
 
 func restoreBackupFile(originalPath string) {
@@ -122,7 +128,6 @@ func restoreBackupFile(originalPath string) {
 			fmt.Printf("Error removing existing original %s: %v\n", originalPath, err)
 			return
 		}
-		fmt.Printf("Removed existing original: %s\n", originalPath)
 	}
 
 	// 3) Rename .bak → original
@@ -130,7 +135,6 @@ func restoreBackupFile(originalPath string) {
 		fmt.Printf("Error restoring backup: %v\n", err)
 		return
 	}
-	fmt.Printf("Restored backup to: %s\n", originalPath)
 
 	// 4) (Optional) Cleanup: remove leftover .bak if any
 	if err := os.Remove(backupPath); err == nil {

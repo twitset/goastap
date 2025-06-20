@@ -1,0 +1,6 @@
+put your astap_cli.exe or  for linux astap here
+
+and also put the catalog files here (nor subdir)
+
+how to get the astap client:
+https://www.hnsky.org/astap.htm

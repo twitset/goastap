@@ -3,23 +3,28 @@ package goastap
 import "testing"
 
 func TestSolver_VerifyAstapBinary(t *testing.T) {
-	solver := NewSolver("astap/astap_cli.exe")
-	err := solver.VerifyAstapBinary()
+	solver, err := NewSolver("astap/astap_cli.exe")
 	if err != nil {
-		t.Errorf("VerifyAstapBinary failed: %v", err)
-	} else {
-		t.Logf("VerifyAstapBinary succeeded")
+		t.Fatalf("NewSolver failed: %v", err)
 	}
-
-	solver.Solve("testdata/not_solved.fits", false)
+	solver.Solve("testdata/test.fits", false)
 }
 
 func TestSolver_SolveDirectory(t *testing.T) {
-	solver := NewSolver("astap/astap_cli.exe")
-	err := solver.SolveDirectory("testdata", false)
+	solver, err := NewSolver("astap/astap_cli.exe")
+	if err != nil {
+		t.Fatalf("NewSolver failed: %v", err)
+	}
+	notSolvedPaths, err := solver.SolveDirectory("testdata", false)
 	if err != nil {
 		t.Errorf("SolveDirectory failed: %v", err)
 	} else {
 		t.Logf("SolveDirectory succeeded")
+	}
+
+	if len(notSolvedPaths) > 0 {
+		t.Errorf("SolveDirectory found unsolved files: %v", notSolvedPaths)
+	} else {
+		t.Logf("All files solved successfully")
 	}
 }
