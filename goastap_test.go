@@ -7,7 +7,12 @@ func TestSolver_VerifyAstapBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSolver failed: %v", err)
 	}
-	solver.Solve("testdata/test.fits", false)
+	err = solver.Solve("testdata/test.fits", false)
+	if err != nil {
+		t.Errorf("Solve failed: %v", err)
+	} else {
+		t.Logf("Solve succeeded")
+	}
 }
 
 func TestSolver_SolveDirectory(t *testing.T) {

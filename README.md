@@ -21,8 +21,6 @@ Go wrapper for invoking the [ASTAP](http://www.hnsky.org/astap.htm) command‑li
 go get github.com/twitset/goastap
 ```
 
-## Usage
-
 ### Importing the package
 
 ```go
@@ -33,7 +31,45 @@ import (
 
 ```
 
-### How to use
+## Usage
+
+### Single Image
+```go 
+
+solver, err := NewSolver("astap/astap_cli.exe") // default is "astap/astap_cli.exe" if left empty
+if err != nil {
+	log.Println("Error creating solver:", err)
+}
+err = solver.Solve("testdata/test.fits", false)
+if err != nil {
+    log.Println("Error solving image:", err)
+} else {
+    log.Println("Image solved successfully!")
+}
+
+```
+
+### Directory Processing
+```go
+	solver, err := NewSolver("astap/astap_cli.exe")
+	if err != nil {
+		t.Fatalf("NewSolver failed: %v", err)
+	}
+	notSolvedPaths, err := solver.SolveDirectory("testdata", false)
+	if err != nil {
+		t.Errorf("SolveDirectory failed: %v", err)
+	} else {
+		t.Logf("SolveDirectory succeeded")
+	}
+
+	if len(notSolvedPaths) > 0 {
+		t.Errorf("SolveDirectory found unsolved files: %v", notSolvedPaths)
+	} else {
+		t.Logf("All files solved successfully")
+	}
+````
+
+### Examples
 
 Take a lock at goastap_test.go for an example of how to use the package. 
 
@@ -43,7 +79,6 @@ Take a lock at goastap_test.go for an example of how to use the package.
 * **Backup**: Before solving, a copy of the original file is made at `<filename>.bak`.
 * **Failure Recovery**: If ASTAP returns an error, the backup will be restored automatically (unless backups have been disabled).
 * **Cleanup**: After a successful solve, backups remain in place until manually removed.
-
 
 ## Contributing
 
